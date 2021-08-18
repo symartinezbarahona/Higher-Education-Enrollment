@@ -3,7 +3,7 @@
 
 In this project, we explored county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, we looked at changes in higher education rates between 2016 and 2019 for the young adult population ages 18-34.
 
-You can access the full project with its visuals [here](file:///C:/Users/symar/Documents/Projects_for_R/higher_education_enrollment/higher_education_enrollment.html).
+You can access the full project with its visuals [here](https://rpubs.com/symartinezbarahona/higher_education_enrollment).
 
 Similar to other packages that access the Census and American Community Survey (ACS), you'll need to acquire an API key. Follow this [link](https://api.census.gov/data/key_signup.html) to get your Census API key.
 
