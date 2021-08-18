@@ -1,11 +1,13 @@
 ---
-title: "U.S Census Project"
+title: "Higher Education Enrollments Ages 18-34 by County, 2016-2019"
 author: "Selvyn Yovany Martinez Barahona"
 date: "8/10/2021"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
-## Higher Education Enrollments Ages 18-34 by County, 2016-2019
+## Overview
 
 In this project, we’ll explore county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, we’re looking at changes in higher education rates between 2016 and 2019 for the young adult population ages 18-34. 
 
@@ -22,15 +24,14 @@ library(dplyr)        # For data wrangling
 library(sf)           # For reading, writing and working with spatial objects
 ```
 
-```{R, warning = FALSE}
+```{R, include = FALSE, error = FALSE, message = FALSE, warning = FALSE}
 readRenviron("~/.Renviron")
 
 Sys.getenv("CENSUS_API_KEY")
 ```
 
-```{R}
+```{R, error = FALSE, warning = FALSE, message = FALSE}
 # Queries to view datasets based on specific criteria. 
-
 v16 <- load_variables(year = 2016,
                       dataset = "acs5",                      
                       cache = TRUE)
@@ -42,12 +43,13 @@ v19 <- load_variables(year = 2019,
 
 ### Downloading Census Data: 
 
+Before we begin mapping, we’ll grab some data from the US Census using the tidycensus package. Similar to other packages that access the Census and American Community Survey (ACS), you’ll need to acquire an API key and store it into your environment.  
+
 The tidycensus package has a convenience function, get_acs(), for allowing the user to download data either as a table or as an sf object with geometry. For downloading sf objects, we'll use the argument geometry = TRUE (FALSE is the default).
 
 In order to download data for the full U.S, we leave the argument for state equal to NULL. Also since we’ll be mapping our data, we’ll use the argument shift_geo = TRUE. This will adjust the positions of Alaska and Hawaii and is very useful for creating thematic maps of the full 50 United States in one view. Notice that we’re grabbing the spatial data for 2019 but not for 2016.
 
 ```{R, error = FALSE, message = FALSE,  warning = FALSE}
-
 hi_ed_enroll = variables = c(male_public_1824="B14004_005", male_public_2534 = "B14004_006", male_private_1824 = "B14004_010", male_private_2534 = "B14004_011", female_public_1824 = "B14004_021", female_public_2534 = "B14004_022", female_private_1824 = "B14004_026", female_private_2534= "B14004_027", male_1819 = "B01001_007", male_20 = "B01001_008", male_21 = "B01001_009", male_2224 = "B01001_010", male_2529 = "B01001_011", male_3034 = "B01001_012", female_1819 = "B01001_031", female_20 = "B01001_032", female_21 = "B01001_033", female_2224 = "B01001_034", female_2529 = "B01001_035", female_3034 = "B01001_036") 
 
 dat16 <- get_acs(geography = "county", hi_ed_enroll,  
@@ -78,14 +80,13 @@ st_geometry(dat) <- NULL
 Given that we have various variables that correspond to different types of data, we will aggregate the variables needed to calculate the total population enrolled in higher education and the total population ages 18 to 34. We’ll assign these as enrolled1834 and pop1834 respectively. From there, we'll use case_when() instead of if/then statements to say “if the variable value is "male_public_1824" then assign the value of “enrolled1834” and so on. 
 
 ```{R}
-
 dat <- mutate(dat,
   variable = case_when(
   variable %in% c("male_public_1824", "male_public_2534", "male_private_1824", "male_private_2534", "female_public_1824", "female_public_2534", "female_private_1824", "female_private_2534") ~ "enrolled1834", 
   variable %in% c("male_1819", "male_20", "male_21","male_2224", "male_2529", "male_3034", "female_1819", "female_20", "female_21",  "female_2224", "female_2529", "female_3034") ~ "pop1834"))
 ```
 
-### Summarize the data by county-year-category
+### Summarizing the Data by County-Year-Category
 
 In order to calculate our estimates, we’ll stack the data, separated by year, using tidyr::gather, then group based on GEOID, NAME, year and our new variables so that we have counts for total population enrolled in higher education and the total population ages 18 to 34 for each county for each year. Then we'll use spread() to push the enrolled1834 and pop1834 into their own variables. The final table should include a county-year summation for both variables. 
 
@@ -100,7 +101,7 @@ dat <- group_by(dat, GEOID, NAME, year, variable) %>%
   tidyr::spread(variable, estimate) 
 ```
 
-### Calculating the final estimates: 
+### Calculating the Final Estimates: 
 
 For our final numbers, we want the percent rate for higher education enrollment ages 18-34 for both 2016 and 2019. In addition, we’ll calculate the difference in percent enrolled between years (i.e. 2016 - 2019).
 
@@ -289,7 +290,7 @@ Based on Figure 4, Texas had the most counties in each category (greatest change
 
 Perhaps this isn’t surprising given that Texas has the most counties in the country by far. There are 254 counties in Texas followed by 159 counties in Georgia. In any case, let’s take a closer look at Texas to see how the other counties stack up.
 
-### Prepare the Texas Data:
+### Preparing the Texas Data:
 
 Here, we'll filter our shp data set to Texas and calculate several fields that will be used in a leaflet map. Instead of a chloropleth map, we’ll use the function tm_bubbles to map our data. 
 
