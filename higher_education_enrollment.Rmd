@@ -5,34 +5,49 @@ date: "8/10/2021"
 output: pdf_document
 ---
 
-```{R, include = FALSE, warning = FALSE}
+## Higher Education Enrollments Ages 18-34 by County, 2016-2019
+
+In this project, we’ll explore county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, we’re looking at changes in higher education rates between 2016 and 2019 for the young adult population ages 18-34. 
+
+## Processing Census Data
+
+```{R, error = FALSE, warning = FALSE, message = FALSE}
 library(ggplot2)      # For plotting
 library(tidycensus)   # For downloading Census data
 library(pander)       # For customizing tables
 library(tmap)         # For creating tmap
-library(oldtmaptools) # contain old(deprecated) functions from tmaptools
+library(oldtmaptools) # Contains old (deprecated) functions from tmaptools
 library(tmaptools)    # For reading and processing spatial data related to tmap
 library(dplyr)        # For data wrangling
 library(sf)           # For reading, writing and working with spatial objects
 ```
 
-```{R, include = FALSE, warning = FALSE}
+```{R, warning = FALSE}
 readRenviron("~/.Renviron")
 
 Sys.getenv("CENSUS_API_KEY")
 ```
 
-```{R, include= FALSE}
+```{R}
+# Queries to view datasets based on specific criteria. 
+
 v16 <- load_variables(year = 2016,
                       dataset = "acs5",                      
                       cache = TRUE)
 
 v19 <- load_variables(year = 2019,
                       dataset = "acs5",                      
-                      cache = TRUE)
+                      cache = TRUE) 
 ```
 
-```{R, include = FALSE, warning = FALSE}
+### Downloading Census Data: 
+
+The tidycensus package has a convenience function, get_acs(), for allowing the user to download data either as a table or as an sf object with geometry. For downloading sf objects, we'll use the argument geometry = TRUE (FALSE is the default).
+
+In order to download data for the full U.S, we leave the argument for state equal to NULL. Also since we’ll be mapping our data, we’ll use the argument shift_geo = TRUE. This will adjust the positions of Alaska and Hawaii and is very useful for creating thematic maps of the full 50 United States in one view. Notice that we’re grabbing the spatial data for 2019 but not for 2016.
+
+```{R, error = FALSE, message = FALSE,  warning = FALSE}
+
 hi_ed_enroll = variables = c(male_public_1824="B14004_005", male_public_2534 = "B14004_006", male_private_1824 = "B14004_010", male_private_2534 = "B14004_011", female_public_1824 = "B14004_021", female_public_2534 = "B14004_022", female_private_1824 = "B14004_026", female_private_2534= "B14004_027", male_1819 = "B01001_007", male_20 = "B01001_008", male_21 = "B01001_009", male_2224 = "B01001_010", male_2529 = "B01001_011", male_3034 = "B01001_012", female_1819 = "B01001_031", female_20 = "B01001_032", female_21 = "B01001_033", female_2224 = "B01001_034", female_2529 = "B01001_035", female_3034 = "B01001_036") 
 
 dat16 <- get_acs(geography = "county", hi_ed_enroll,  
@@ -46,18 +61,23 @@ dat19 <- get_acs(geography = "county", hi_ed_enroll,
   select(-moe)
 ```
 
+### Joining the 2016 and 2019 Data:
+
+Here, we will use left_join to merge the tables to keep all records from the 2019 data and only those from the 2016 data that match. 
+
+The joined table, dat, will be used for the tabular data processing so we can safely drop the geometry with the function st_geometry() from the sf package. Once we’ve completed the tabular data processing, we will join the tabular data back with the geometry. 
+
 ```{R}
-# Left_join to merge the tables to keep all records from the 2016 data and only those from the 2012 data that match
 dat <- left_join(dat19, dat16, by = c("GEOID", "variable")) 
 
-# This drops the geometry and leaves a table
 st_geometry(dat) <- NULL 
-
-head(dat)
 ```
 
-```{R, include= FALSE}
-# Used case_when() instead of of if/then statements to say “if the variable value is "male_public_1824" then assign the value of “enrolled1834” and so on.
+### Assigning Enrollment Categories:
+
+Given that we have various variables that correspond to different types of data, we will aggregate the variables needed to calculate the total population enrolled in higher education and the total population ages 18 to 34. We’ll assign these as enrolled1834 and pop1834 respectively. From there, we'll use case_when() instead of if/then statements to say “if the variable value is "male_public_1824" then assign the value of “enrolled1834” and so on. 
+
+```{R}
 
 dat <- mutate(dat,
   variable = case_when(
@@ -65,7 +85,11 @@ dat <- mutate(dat,
   variable %in% c("male_1819", "male_20", "male_21","male_2224", "male_2529", "male_3034", "female_1819", "female_20", "female_21",  "female_2224", "female_2529", "female_3034") ~ "pop1834"))
 ```
 
-```{R, include=FALSE, warning = FALSE}
+### Summarize the data by county-year-category
+
+In order to calculate our estimates, we’ll stack the data, separated by year, using tidyr::gather, then group based on GEOID, NAME, year and our new variables so that we have counts for total population enrolled in higher education and the total population ages 18 to 34 for each county for each year. Then we'll use spread() to push the enrolled1834 and pop1834 into their own variables. The final table should include a county-year summation for both variables. 
+
+```{R, error = FALSE, message = FALSE, warning = FALSE}
 # Create long version
 dat <- tidyr::gather(dat, year, estimate, c(`2016`, `2019`)) 
 
@@ -74,43 +98,75 @@ dat <- group_by(dat, GEOID, NAME, year, variable) %>%
   summarize(estimate = sum(estimate)) %>%
   ungroup() %>%
   tidyr::spread(variable, estimate) 
-
-head(dat)
 ```
 
+### Calculating the final estimates: 
+
+For our final numbers, we want the percent rate for higher education enrollment ages 18-34 for both 2016 and 2019. In addition, we’ll calculate the difference in percent enrolled between years (i.e. 2016 - 2019).
+
 ```{R}
-# For our final numbers, we want % of enrolled population ages 18-34 for both 2019 and 2016. In addition we’ll calculate the difference in % enrolled between years (i.e. 2016 - 2012).
 dat <- mutate(dat, est = (enrolled1834/pop1834) * 100) %>%
   select(-c(enrolled1834, pop1834)) %>%
   tidyr::spread(year, est) %>%
   mutate(diff = `2019`-`2016`)
 ```
 
+## Overview of the Higher Education Enrollment Rate in the U.S
+
+### Distribution by Year:
+
+In this section, we will compare the county distributions as well as the percent mean enrolled by year using facet_wrap. We will also test these means to see if there is a significant difference between years. 
+
 ```{R}
 datlong <- select(dat, -diff) %>%
   tidyr::gather(year, estimate, c(`2016`, `2019`)) %>%
   group_by(year) %>%
-  mutate(avg = round(mean(estimate, na.rm = TRUE), 1))
+  mutate(mean = round(mean(estimate, na.rm = TRUE), 1)) %>%
+  mutate(median = round(median(estimate, na.rm = TRUE), 1))
 ```
 
 ```{R}
-# Compare the county distributions as well as the average % of enrollment by year. 
+# Compare the county distributions as well as the % mean of enrollment by year. 
 ggplot(datlong, aes(estimate)) +
   geom_histogram(fill = "firebrick2", 
     color = "white", bins = 60) +
   labs(x= "Enrolled Adults Ages 18-34 (%) ", y= "Count",
-       title="Figure 1: Higher Education Enrollment Ages 18-34 by County", 
+       title="Figure 1: Distribution of Higher Education Enrollment Ages 18-34", 
        subtitle="American Community Survey, 2016-2019", 
        caption= "Source: United States Census Bureau ") +
   theme(plot.subtitle= element_text(face = "italic"))+
   facet_wrap(~year, ncol = 1) +
-  geom_vline(aes(xintercept = avg,
+  geom_vline(aes(xintercept = mean, 
     group = year), lty = "dashed") +
-  geom_text(aes(label = paste("Average = ", avg), x = avg, y = 55))
+  geom_vline(aes(xintercept = median, 
+    group = year), lty = "dashed")+ 
+  geom_text(aes(label = paste("Mean = ", mean), x = mean, y = 55))+
+  geom_text(aes(label = paste("Median = ", median), x = median, y = 150))
 ```
 
 ```{R}
-# Our initial file, dat19, included the actual geography while the file we just created is tabular-only. In order to map the variables we just created we can join dat with the spatial object dat19. Because of the way tidycensus formats the data (stacked) we’ll remove all variables except for one and join the objects by GEOID and NAME.
+# At a 95% confidence level, we can reject the null hypothesis because the test statistic is greater than 1.96, the p-value is less than 0.05 and the 95% confidence interval does not include 0. 
+t_mean<- t.test(datlong$estimate[datlong$year==2016],
+       datlong$estimate[datlong$year==2019]) 
+```
+
+```{R}
+panderOptions('table.split.table', Inf) 
+
+pander(t_mean, 
+
+caption = "Two-Sample T-Test for Higher Education Enrollment, 2016-2019")
+``` 
+
+According to Figure 1 and Table 1, the average higher education enrollment rate decreased significantly by a whole percentage point. Additionally, the distribution for both 2016 and 2019 is skewed to the right because the mean, which is 18.4% and 17.5% respectively, is greater than their respective medians of 16.1% and 15.1%. What this means is that certain counties have larger enrollment rates than the rest of the country. 
+
+## Mapping the Continental U.S with Tmap
+
+### Creating a Geographic File: 
+
+As you may recall, our initial file, dat19, included the actual geography while the file we just created is tabular-only. In order to map the variables we just created, we can join dat with the spatial object dat19. Because of the way tidycensus formats the data (stacked), we’ll remove all variables except for one and join the objects by GEOID and NAME.
+
+```{R}
 shp <- dat19 %>%
   filter(variable == "male_public_1824") %>% # much faster than using distinct()
   select(GEOID, NAME) %>%
@@ -125,17 +181,25 @@ shp <- dat19 %>%
 shp <- filter(shp, GEOID != "02016")
 ```
 
+### Mapping: 
+
+First, we want to add state boundaries to the maps. We can do this by using the function aggregate_map from library(oldtmaptools) to aggregate our county layer by state FIPS code and add it as a layer.
+
+From there, we want to control the cut point by dropping the style argument and using breaks. The cuts, here, will be based on the quantiles of 2019, which are smaller than those of 2016. 
+
+Finally, we will write a function that includes all of our user-defined classifications such as colors and titles as well as adding additional layers like map margins, scalebars, and north arrows to make the maps more aesthetically pleasing. 
+
 ```{R}
-# Create a state FIPS field 
+# Create a state FIPS field.
 shp <- mutate(shp, STFIPS = stringr::str_sub(GEOID, 1, 2))
 
-# Aggregate the county layer by state 
+# Aggregate the county layer by state. 
 states <- shp %>%
   aggregate_map(by = "STFIPS") 
 
 cuts <- c(0, 10, 14, 17, 22, 100)
 
- # write a function that includes all described elements but allows us to tweak the features that we want.
+# Allows us to tweak the features that we want like variable name and title.
 createMap <- function(.data, varname, statecol, maptitle){ 
 mymap <- tm_shape(shp, projection = 2163, unit= "mi") +
   tm_polygons(varname,
@@ -156,10 +220,10 @@ mymap + tm_shape(states) +
      color.dark = "gray60", text.color = "gray60",
      position = c("left", "top"))
 }
-
 ```
 
-```{r}
+### Continental Map of Higher Education Enrollment Ages 18-34 by County, 2016-2019
+```{R}
 m1 <- createMap(shp, 
   varname = "enrolled_2016", 
   statecol = "black", 
@@ -168,7 +232,7 @@ m1 <- createMap(shp,
 m1
 ```
 
-```{r}
+```{R}
 m2 <- createMap(shp, 
   varname = "enrolled_2019", 
   statecol = "black",
@@ -177,9 +241,15 @@ m2 <- createMap(shp,
 m2
 ```
 
-```{R}
-# We want to know which counties experienced the largest increase or decrease in the % of uninsured. We'll the function dplyr::top_n to get the first and last 10 records from the diff field.
+Based on Figure 2 and Figure 3, higher education enrollment rates across the nation seemed pretty consistent with the exception of certain regions like the American North and SouthWest, where enrollment rates seemed to have decreased. Specific states such as Arizona, New Mexico, Colorado, and Texas seem to have the most drastic shifts in enrollment rates by far. 
 
+## Taking a Deeper Dive into Higher Education Enrollment rates by Individual Counties
+
+### Counties with Greatest Change (+/-) in Percent of Higher Education Enrollment:
+
+In this section, we'll explore which counties experienced the largest increase or decrease in percent of higher education enrollment. We'll use the function dplyr::top_n to get the first and last 10 records from the diff field.
+
+```{R}
 d10 <- top_n(dat, 10, diff) %>%
   mutate(type = "Enrollment Decreased",
     difftemp = diff)
@@ -202,20 +272,35 @@ ggplot(id10) +
    theme(plot.subtitle= element_text(face = "italic"),
          legend.position = "bottom",
          legend.title = element_blank()) +
-  labs(x= "", y= "Difference in % Enrolled 2016 - 2019",
+  labs(x= "", y= "Difference in % Enrolled 2016-2019",
        title="Figure 4: Counties with the Greatest Change (+/-) \nin Higher Education Enrollment Ages 18-34", 
-       subtitle="American Community Survey, 2016 - 2019", 
+       subtitle="American Community Survey, 2016-2019", 
        caption= "Source: United States Census Bureau ")
- 
 ```
+
+As expected, Figure 4 illustrates that states in the American North and Southwest had the greatest changes in higher education enrollment. In particular, the states of New Mexico and Texas had the most changes appearing four times each. 
+
+### Exploring Higher Education Enrollment Rates in Texas: 
+
+Based on Figure 4, Texas had the most counties in each category (greatest change (+/-) in higher education enrollment Ages 18-34, 2016-2019):
+
+* Enrollment increased: 2 counties in Texas were in the top 10.
+* Enrollment decreased: 2 counties in Texas were in the top 10.
+
+Perhaps this isn’t surprising given that Texas has the most counties in the country by far. There are 254 counties in Texas followed by 159 counties in Georgia. In any case, let’s take a closer look at Texas to see how the other counties stack up.
+
+### Prepare the Texas Data:
+
+Here, we'll filter our shp data set to Texas and calculate several fields that will be used in a leaflet map. Instead of a chloropleth map, we’ll use the function tm_bubbles to map our data. 
+
 ```{R}
 # Filter to Texas and create some additional fields for mapping. Since we'll be using
 tx <- filter(shp, STFIPS == "48") %>%
   mutate(NAME = stringr::str_remove(NAME, ", Texas"),
     `Higher Education Enrollment in Texas Ages 18-34, 2016-2019` = case_when(
-      enrolled_diff < 0  ~ "Enrolled population increased",
-      enrolled_diff > 0  ~ "Enrolled population decreased",
-      enrolled_diff == 0 ~ "Enrolled population stayed the same"),
+      enrolled_diff < 0  ~ "Enrollment increased",
+      enrolled_diff > 0  ~ "Enrollment decreased",
+      enrolled_diff == 0 ~ "Enrollment stayed the same"),
     diff2 = round(abs(enrolled_diff), 1),
     popup = ifelse(enrolled_diff != 0,
       paste0(`Higher Education Enrollment in Texas Ages 18-34, 2016-2019`, " by ", diff2, "%"), 
@@ -227,12 +312,13 @@ tx <- filter(shp, STFIPS == "48") %>%
 tx <- select(tx, -c(enrolled_2016, enrolled_2019, enrolled_diff, STFIPS))
 ```
 
+### Interactive Map of Higher Education Enrollment in Texas Ages 18-34, 2016-2019: 
+
 ```{R, echo= FALSE, error = FALSE, warning = FALSE, message = FALSE}
 # Basemap
 carto <- "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}{r}.png"
 
-# Create a "normal" tmap except we'll add the basemap and the `popup.vars` argument.The symbol size of the bubbles will be based on the data so use our calculated field `diffrad` which will apply sizes 1 through 5. Sizes can be further adjusted using the `scale` argument.
-
+# Created a "normal" tmap except we'll add the basemap and the `popup.vars` argument.The symbol size of the bubbles will be based on the data so use our calculated field `diffrad` which will apply sizes 1 through 5. Sizes can be further adjusted using the `scale` argument.
 txmap <- tm_basemap(carto) +  
   tm_shape(tx) +
   tm_borders(col = "azure2") +
@@ -247,5 +333,5 @@ txmap <- tm_basemap(carto) +
 tmap_leaflet(txmap)
 ```
 
-
+According to the leaflet map of Texas, there were more counties that had their enrollment rates decreased than counties that had their enrollment rates increased between 2016 and 2019. Something that stands out in this map is the fact that counties in rural and suburban areas are apparently the ones that have greatest decreases in enrollment while urban areas such as Austin and Houston are the ones that are having the greatest increases in enrollment. These discrepancies probably reflect the massive shift in population that is occurring in these two American cities. 
 
