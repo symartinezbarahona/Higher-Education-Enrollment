@@ -9,7 +9,7 @@ output:
 
 ## Overview
 
-In this project, we’ll explore county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, we’re looking at changes in higher education rates between 2016 and 2019 for the young adult population ages 18-34. 
+In this project, we’ll explore county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, we’re looking at changes in higher education enrollment rates between 2016 and 2019 for the young adult population ages 18-34. 
 
 ## Processing Census Data
 
@@ -86,7 +86,7 @@ dat <- mutate(dat,
   variable %in% c("male_1819", "male_20", "male_21","male_2224", "male_2529", "male_3034", "female_1819", "female_20", "female_21",  "female_2224", "female_2529", "female_3034") ~ "pop1834"))
 ```
 
-### Summarizing the Data by County-Year-Category
+### Summarizing the Data by County-Year-Category:
 
 In order to calculate our estimates, we’ll stack the data, separated by year, using tidyr::gather, then group based on GEOID, NAME, year and our new variables so that we have counts for total population enrolled in higher education and the total population ages 18 to 34 for each county for each year. Then we'll use spread() to push the enrolled1834 and pop1834 into their own variables. The final table should include a county-year summation for both variables. 
 
@@ -223,7 +223,7 @@ mymap + tm_shape(states) +
 }
 ```
 
-### Continental Map of Higher Education Enrollment Ages 18-34 by County, 2016-2019
+### Continental Map of Higher Education Enrollment Ages 18-34 by County, 2016-2019:
 ```{R}
 m1 <- createMap(shp, 
   varname = "enrolled_2016", 
@@ -244,7 +244,7 @@ m2
 
 Based on Figure 2 and Figure 3, higher education enrollment rates across the nation seemed pretty consistent with the exception of certain regions like the American North and SouthWest, where enrollment rates seemed to have decreased. Specific states such as Arizona, New Mexico, Colorado, and Texas seem to have the most drastic shifts in enrollment rates by far. 
 
-## Taking a Deeper Dive into Higher Education Enrollment rates by Individual Counties
+## Taking a Deeper Dive into Higher Education Enrollment Rates by Individual Counties
 
 ### Counties with Greatest Change (+/-) in Percent of Higher Education Enrollment:
 
