@@ -1,7 +1,7 @@
 ## Higher Education Enrollments Ages 18-34 by County, 2016-2019
 ### Selvyn Yovany Martinez Barahona
 
-In this project, we explored county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, we looked at changes in higher education enrollment rates between 2016 and 2019 for the young adult population ages 18-34.
+In this project, I explored county-level higher education enrollment rates (meaning whether respondents are enrolled in a undergraduate or graduate program) in the U.S from the American Community Survey. In particular, I looked at changes in higher education enrollment rates between 2016 and 2019 for the young adult population ages 18-34.
 
 You can access the full project with its visuals [here](https://rpubs.com/symartinezbarahona/higher-education-enrollment).
 
