@@ -159,7 +159,7 @@ pander(t_mean,
 caption = "Two-Sample T-Test for Higher Education Enrollment, 2016-2019")
 ``` 
 
-According to Figure 1 and Table 1, the average higher education enrollment rate decreased significantly by a whole percentage point. Additionally, the distribution for both 2016 and 2019 is skewed to the right because the mean, which is 18.4% and 17.5% respectively, is greater than their respective medians of 16.1% and 15.1%. What this means is that certain counties have larger enrollment rates than the rest of the country. 
+According to Figure 1 and Table 1, the average higher education enrollment rate decreased significantly by a whole percentage point. Additionally, the distribution for both 2016 and 2019 is skewed to the right because the means, which are 18.4% and 17.5% respectively, is greater than their respective medians of 16.1% and 15.1%. What this means is that certain counties have larger enrollment rates than the rest of the country. 
 
 ## Mapping the Continental U.S with Tmap
 
