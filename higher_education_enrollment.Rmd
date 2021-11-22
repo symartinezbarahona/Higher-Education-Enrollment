@@ -47,7 +47,7 @@ Before we begin mapping, we’ll grab some data from the US Census using the tid
 
 The tidycensus package has a convenience function, get_acs(), for allowing the user to download data either as a table or as an sf object with geometry. For downloading sf objects, we'll use the argument geometry = TRUE (FALSE is the default).
 
-In order to download data for the full U.S, we leave the argument for state equal to NULL. Also since we’ll be mapping our data, we’ll use the argument shift_geo = TRUE. This will adjust the positions of Alaska and Hawaii and is very useful for creating thematic maps of the full 50 United States in one view. Notice that we’re grabbing the spatial data for 2019 but not for 2016.
+In order to download data for the full U.S, we leave the argument for state equal to NULL. Also since we’ll be mapping our data, we’ll use the argument shift_geo = TRUE. This will adjust the positions of Alaska and Hawaii and is very useful for creating thematic maps of the full 50 states in one view. Notice that we’re grabbing the spatial data for 2019 but not for 2016.
 
 ```{R, error = FALSE, message = FALSE,  warning = FALSE}
 hi_ed_enroll = variables = c(male_public_1824="B14004_005", male_public_2534 = "B14004_006", male_private_1824 = "B14004_010", male_private_2534 = "B14004_011", female_public_1824 = "B14004_021", female_public_2534 = "B14004_022", female_private_1824 = "B14004_026", female_private_2534= "B14004_027", male_1819 = "B01001_007", male_20 = "B01001_008", male_21 = "B01001_009", male_2224 = "B01001_010", male_2529 = "B01001_011", male_3034 = "B01001_012", female_1819 = "B01001_031", female_20 = "B01001_032", female_21 = "B01001_033", female_2224 = "B01001_034", female_2529 = "B01001_035", female_3034 = "B01001_036") 
